@@ -93,7 +93,7 @@ wg_basic_cleanup()
 	vnet_cleanup
 }
 
-# The kernel is expecteld to silently ignore any attempt to add a peer with a
+# The kernel is expected to silently ignore any attempt to add a peer with a
 # public key identical to the host's.
 atf_test_case "wg_key_peerdev_shared" "cleanup"
 wg_key_peerdev_shared_head()
