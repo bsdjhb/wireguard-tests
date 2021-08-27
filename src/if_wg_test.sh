@@ -28,7 +28,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
-. $(atf_get_srcdir)/../common/vnet.subr
+. /usr/tests/sys/common/vnet.subr
 
 atf_test_case "wg_basic" "cleanup"
 wg_basic_head()
