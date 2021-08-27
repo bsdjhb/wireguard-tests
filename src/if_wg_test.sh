@@ -44,8 +44,8 @@ wg_basic_body()
 
 	kldload -n if_wg
 
-	pri1=$(openssl rand -base64 32)
-	pri2=$(openssl rand -base64 32)
+	pri1=$(wg genkey)
+	pri2=$(wg genkey)
 
 	endpoint1=192.168.2.1
 	endpoint2=192.168.2.2
@@ -66,22 +66,26 @@ wg_basic_body()
 	jexec wgtest1 ifconfig ${epair}a $endpoint1 up
 	jexec wgtest2 ifconfig ${epair}b $endpoint2 up
 
-	wg1=$(jexec wgtest1 ifconfig wg create listen-port 12345 private-key "$pri1")
-	pub1=$(jexec wgtest1 ifconfig $wg1 | awk '/public-key:/ {print $2}')
-	wg2=$(jexec wgtest2 ifconfig wg create listen-port 12345 private-key "$pri2")
-	pub2=$(jexec wgtest2 ifconfig $wg2 | awk '/public-key:/ {print $2}')
+	wg1=$(jexec wgtest1 ifconfig wg create)
+	echo "$pri1" | jexec wgtest1 wg set $wg1 listen-port 12345 \
+	    private-key /dev/stdin
+	pub1=$(jexec wgtest1 wg show $wg1 public-key)
+	wg2=$(jexec wgtest2 ifconfig wg create)
+	echo "$pri2" | jexec wgtest2 wg set $wg2 listen-port 12345 \
+	    private-key /dev/stdin
+	pub2=$(jexec wgtest2 wg show $wg2 public-key)
 
 	atf_check -s exit:0 -o ignore \
-	    jexec wgtest1 ifconfig $wg1 peer public-key "$pub2" \
+	    jexec wgtest1 wg set $wg1 peer "$pub2" \
 	    endpoint ${endpoint2}:12345 allowed-ips ${tunnel2}/32
 	atf_check -s exit:0 \
-	    jexec wgtest1 ifconfig $wg1 inet $tunnel1
+	    jexec wgtest1 ifconfig $wg1 inet $tunnel1 up
 
 	atf_check -s exit:0 -o ignore \
-	    jexec wgtest2 ifconfig $wg2 peer public-key "$pub1" \
+	    jexec wgtest2 wg set $wg2 peer "$pub1" \
 	    endpoint ${endpoint1}:12345 allowed-ips ${tunnel1}/32
 	atf_check -s exit:0 \
-	    jexec wgtest2 ifconfig $wg2 inet $tunnel2
+	    jexec wgtest2 ifconfig $wg2 inet $tunnel2 up
 
 	# Generous timeout since the handshake takes some time.
 	atf_check -s exit:0 -o ignore jexec wgtest1 ping -o -t 5 -i 0.25 $tunnel2
@@ -109,21 +113,23 @@ wg_key_peerdev_shared_body()
 
 	kldload -n if_wg
 
-	pri1=$(openssl rand -base64 32)
+	pri1=$(wg genkey)
 
 	endpoint1=192.168.2.1
 	tunnel1=169.254.0.1
 
 	vnet_mkjail wgtest1
 
-	wg1=$(jexec wgtest1 ifconfig wg create listen-port 12345 private-key "$pri1")
-	pub1=$(jexec wgtest1 ifconfig $wg1 | awk '/public-key:/ {print $2}')
+	wg1=$(jexec wgtest1 ifconfig wg create)
+	echo "$pri1" | jexec wgtest1 wg set $wg1 listen-port 12345 \
+	    private-key /dev/stdin
+	pub1=$(jexec wgtest1 wg show $wg1 public-key)
 
 	atf_check -s exit:0 \
-	    jexec wgtest1 ifconfig ${wg1} peer public-key "${pub1}" \
+	    jexec wgtest1 wg set ${wg1} peer "${pub1}" \
 	    allowed-ips "${tunnel1}/32"
 
-	atf_check -o empty jexec wgtest1 ifconfig ${wg1} peers
+	atf_check -o empty jexec wgtest1 wg show ${wg1} peers
 }
 
 wg_key_peerdev_shared_cleanup()
@@ -148,31 +154,34 @@ wg_key_peerdev_makeshared_body()
 
 	kldload -n if_wg
 
-	pri1=$(openssl rand -base64 32)
-	pri2=$(openssl rand -base64 32)
+	pri1=$(wg genkey)
+	pri2=$(wg genkey)
 
 	endpoint1=192.168.2.1
 	tunnel1=169.254.0.1
 
 	vnet_mkjail wgtest1
 
-	wg1=$(jexec wgtest1 ifconfig wg create listen-port 12345 private-key "$pri1")
-	pub1=$(jexec wgtest1 ifconfig $wg1 | awk '/public-key:/ {print $2}')
-
-	wg2=$(jexec wgtest1 ifconfig wg create listen-port 12345 private-key "$pri2")
+	wg1=$(jexec wgtest1 ifconfig wg create)
+	echo "$pri1" | jexec wgtest1 wg set $wg1 listen-port 12345 \
+	    private-key /dev/stdin
+	pub1=$(jexec wgtest1 wg show $wg1 public-key)
+	wg2=$(jexec wgtest1 ifconfig wg create)
+	echo "$pri2" | jexec wgtest1 wg set $wg2 listen-port 12345 \
+	    private-key /dev/stdin
 
 	atf_check -s exit:0 -o ignore \
-	    jexec wgtest1 ifconfig ${wg2} peer public-key "${pub1}" \
+	    jexec wgtest1 wg set ${wg2} peer "${pub1}" \
 	    allowed-ips "${tunnel1}/32"
 
-	atf_check -o not-empty jexec wgtest1 ifconfig ${wg2} peers
+	atf_check -o not-empty jexec wgtest1 wg show ${wg2} peers
 
 	jexec wgtest1 sh -c "echo '${pri1}' > pri1"
 
 	atf_check -s exit:0 \
 	   jexec wgtest1 wg set ${wg2} private-key pri1
 
-	atf_check -o empty jexec wgtest1 ifconfig ${wg2} peers
+	atf_check -o empty jexec wgtest1 wg show ${wg2} peers
 }
 
 wg_key_peerdev_makeshared_cleanup()
