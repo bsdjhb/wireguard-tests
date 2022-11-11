@@ -63,8 +63,8 @@ wg_basic_body()
 	jexec wgtest1 ifconfig lo0 up
 	jexec wgtest2 ifconfig lo0 up
 
-	jexec wgtest1 ifconfig ${epair}a $endpoint1 up
-	jexec wgtest2 ifconfig ${epair}b $endpoint2 up
+	jexec wgtest1 ifconfig ${epair}a ${endpoint1}/24 up
+	jexec wgtest2 ifconfig ${epair}b ${endpoint2}/24 up
 
 	wg1=$(jexec wgtest1 ifconfig wg create)
 	echo "$pri1" | jexec wgtest1 wg set $wg1 listen-port 12345 \
@@ -79,13 +79,13 @@ wg_basic_body()
 	    jexec wgtest1 wg set $wg1 peer "$pub2" \
 	    endpoint ${endpoint2}:12345 allowed-ips ${tunnel2}/32
 	atf_check -s exit:0 \
-	    jexec wgtest1 ifconfig $wg1 inet $tunnel1 up
+	    jexec wgtest1 ifconfig $wg1 inet ${tunnel1}/24 up
 
 	atf_check -s exit:0 -o ignore \
 	    jexec wgtest2 wg set $wg2 peer "$pub1" \
 	    endpoint ${endpoint1}:12345 allowed-ips ${tunnel1}/32
 	atf_check -s exit:0 \
-	    jexec wgtest2 ifconfig $wg2 inet $tunnel2 up
+	    jexec wgtest2 ifconfig $wg2 inet ${tunnel2}/24 up
 
 	# Generous timeout since the handshake takes some time.
 	atf_check -s exit:0 -o ignore jexec wgtest1 ping -o -t 5 -i 0.25 $tunnel2
